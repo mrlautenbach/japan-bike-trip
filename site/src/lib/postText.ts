@@ -19,6 +19,11 @@ const LOOSE_MAX_WORDS = 10;
 const DAY_MARKER = /^Day\s*\d+[a-z]?$/i;
 const MIN_STAT_LINES = 2;
 
+// Some posts (e.g. a list of standalone observations) are hand-marked in the
+// source with a leading "- " so they render as a plain bulleted list rather
+// than prose, without being mistaken for the day-tally stat shape above.
+const BULLET_LINE = /^[-•]\s+/;
+
 function isStatLine(line: string): boolean {
   return STAT_DASH.test(line) || STAT_COLON.test(line);
 }
@@ -36,6 +41,14 @@ export function parsePostBlocks(text: string | null | undefined): PostBlock[] {
   const blocks: PostBlock[] = [];
 
   for (let i = 0; i < lines.length; i++) {
+    if (BULLET_LINE.test(lines[i])) {
+      let end = i;
+      while (end < lines.length && BULLET_LINE.test(lines[end])) end++;
+      blocks.push({ type: 'stats', label: null, items: lines.slice(i, end).map((l) => l.replace(BULLET_LINE, '')) });
+      i = end - 1;
+      continue;
+    }
+
     let end = i;
     while (end < lines.length && isStatLine(lines[end])) end++;
 
