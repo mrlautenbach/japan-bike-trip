@@ -1,0 +1,62 @@
+{
+  "beginnings": {
+    "from": "1",
+    "to": "1",
+    "notDaySpecific": false
+  },
+  "kyushu-i-hardly-knew-you": {
+    "from": "2",
+    "to": "2",
+    "notDaySpecific": false
+  },
+  "grandpa-j-roads": {
+    "from": "2",
+    "to": "4",
+    "notDaySpecific": false
+  },
+  "shikoku": {
+    "from": "5",
+    "to": "5",
+    "notDaySpecific": false
+  },
+  "shimanami-kaido": {
+    "from": "6",
+    "to": "6",
+    "notDaySpecific": false
+  },
+  "the-one-thing": {
+    "from": "7",
+    "to": "9",
+    "notDaySpecific": false
+  },
+  "turning-north": {
+    "from": "10",
+    "to": "11",
+    "notDaySpecific": false
+  },
+  "random-thoughts-from-the-road": {
+    "from": "12",
+    "to": "13",
+    "notDaySpecific": false
+  },
+  "the-coastal-route": {
+    "from": "14",
+    "to": "16",
+    "notDaySpecific": false
+  },
+  "kyushu-s-northwest-coast": {
+    "from": "17",
+    "to": "19",
+    "notDaySpecific": false
+  },
+  "turning-inland": {
+    "from": "20",
+    "to": "21",
+    "notDaySpecific": false
+  },
+  "hokkaido": {
+    "from": "22",
+    "to": "26",
+    "notDaySpecific": false
+  }
+}

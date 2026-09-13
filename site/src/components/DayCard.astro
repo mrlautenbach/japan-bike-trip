@@ -1,0 +1,127 @@
+---
+import ElevationChart from './ElevationChart.astro';
+import { parsePostBlocks } from '../lib/postText';
+
+interface Chapter {
+  slug: string;
+  title: string;
+  desc: string | null;
+  fullText: string | null;
+  url: string;
+}
+
+interface MapProjection {
+  minLon: number;
+  maxLat: number;
+  cosLat: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+}
+
+interface Props {
+  day: any;
+  chapters: Chapter[];
+  mapProjection: MapProjection;
+}
+const { day, chapters, mapProjection } = Astro.props as Props;
+
+function project([lon, lat]: [number, number]): [number, number] {
+  const x = (lon - mapProjection.minLon) * mapProjection.cosLat * mapProjection.scale + mapProjection.offsetX;
+  const y = (mapProjection.maxLat - lat) * mapProjection.scale + mapProjection.offsetY;
+  return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+}
+
+function decimate(coords: number[][], stride: number) {
+  return coords.filter((_: number[], i: number) => i % stride === 0 || i === coords.length - 1);
+}
+
+const dayPathD = day.routeSegments
+  .filter((seg: number[][]) => seg.length > 1)
+  .map((seg: number[][]) => {
+    const pts = decimate(seg, 2).map(project);
+    return 'M' + pts.map((p) => p.join(',')).join('L');
+  })
+  .join(' ');
+
+const startDot = day.startCoords ? project(day.startCoords) : null;
+---
+<section class="day-section" id={`day-${day.id}`} data-day-id={day.id}>
+  <div class="day-heading">
+    <div class="day-eyebrow"><span class="accent">{day.label}</span> · {day.dateJst}</div>
+    <h2 class="day-title">{day.title.replace(/^Japan.?s? South to North,\s*Day\s*\d+,?\s*/i, '') || day.title}</h2>
+  </div>
+
+  <div class="day-top-row">
+    <div class="stat-card">
+      <div class="stat-bar">
+        <div class="stat"><div class="value">{day.stats.distanceKm} km</div><div class="label">Distance</div></div>
+        <div class="stat"><div class="value">{day.stats.elevationGainM} m</div><div class="label">Elevation</div></div>
+        <div class="stat"><div class="value">{day.stats.movingTime}</div><div class="label">Moving Time</div></div>
+        {day.stats.avgHr && <div class="stat"><div class="value">{day.stats.avgHr} bpm</div><div class="label">Avg HR</div></div>}
+        <div class="stat"><div class="value">{day.stats.maxSpeedKmh} km/h</div><div class="label">Max Speed</div></div>
+      </div>
+      <ElevationChart profile={day.elevationProfile} />
+    </div>
+
+    <div class="locator-card">
+      <svg viewBox={`0 0 ${mapProjection.width} ${mapProjection.height}`} class="locator-svg">
+        <use href="#trip-outline-symbol" />
+        <path d={dayPathD} class="locator-day-path" />
+        {startDot && <circle cx={startDot[0]} cy={startDot[1]} r="2.5" class="locator-start-dot" />}
+      </svg>
+    </div>
+  </div>
+
+  {day.videos.length > 0 && day.videos.map((video: any) => (
+    <div class="video-block">
+      <video
+        src={`/videos/${video.filename}`}
+        muted
+        playsinline
+        loop
+        preload="metadata"
+        data-sound={video.sound ? 'true' : 'false'}
+      />
+    </div>
+  ))}
+
+  {day.photos.length > 0 ? (
+    <div class="photo-grid">
+      {day.photos.map((photo: any) => (
+        <img src={`/photos/${photo.filename}`} alt={`Photo from ${day.label}`} loading="lazy" />
+      ))}
+    </div>
+  ) : (
+    <p class="no-photos-note">Photos from this day coming soon.</p>
+  )}
+
+  {chapters.map((chapter) => (
+    <div class="chapter-block">
+      <div class="chapter-title">{chapter.title}</div>
+      {parsePostBlocks(chapter.fullText || chapter.desc).map((block) =>
+        block.type === 'stats' ? (
+          <>
+            {block.label && <div class="chapter-facts-label">{block.label}</div>}
+            <ul class="chapter-facts">
+              {block.items.map((line: string) => (
+                <li>{line}</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p class="chapter-desc">{block.text}</p>
+        )
+      )}
+      <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
+    </div>
+  ))}
+
+  {day.heroPhoto && (
+    <div class="day-hero-photo">
+      <img src={`/photos/${day.heroPhoto.filename}`} alt={`Featured photo from ${day.label}`} loading="lazy" />
+    </div>
+  )}
+</section>

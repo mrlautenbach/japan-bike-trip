@@ -1,0 +1,351 @@
+---
+import '../styles/global.css';
+import DayCard from '../components/DayCard.astro';
+import trip from '../data/trip.json';
+import japanOutlineRings from '../data/japan-outline.json';
+import { parsePostBlocks } from '../lib/postText';
+
+const chaptersByAnchorDay: Record<string, any[]> = {};
+const dayOnlyChapters = trip.chapters.filter((c: any) => !c.notDaySpecific && c.dayIds.length > 0);
+for (const chapter of dayOnlyChapters) {
+  const anchorDayId = chapter.dayIds[0];
+  chaptersByAnchorDay[anchorDayId] ??= [];
+  chaptersByAnchorDay[anchorDayId].push(chapter);
+}
+
+const epilogueChapters = trip.chapters.filter((c: any) => c.notDaySpecific && c.category === 'epilogue');
+
+const PRELUDE_ORDER = [
+  'from-bottom-to-top',
+  'japan-journey-the-gear',
+  'the-route',
+];
+const preludeChapters = trip.chapters
+  .filter((c: any) => c.notDaySpecific && (c.category === 'prologue' || c.category === 'meta') && c.slug !== '10-ways-to-curate-your-digital-space-for-writing')
+  .sort((a: any, b: any) => PRELUDE_ORDER.indexOf(a.slug) - PRELUDE_ORDER.indexOf(b.slug));
+
+// Card-free breathing room between the legs of the trip: the map alone, one
+// island name, and the numbers for that stretch. Grouped by day number so the
+// rest day (22a) lands with Hokkaido automatically.
+const ISLAND_LEGS = [
+  { part: 'Part One', name: 'Kyūshū', from: 1, to: 4 },
+  { part: 'Part Two', name: 'Shikoku', from: 5, to: 6 },
+  { part: 'Part Three', name: 'Honshū', from: 7, to: 21 },
+  { part: 'Part Four', name: 'Hokkaidō', from: 22, to: 26 },
+];
+
+const mapBeats = ISLAND_LEGS.map((leg) => {
+  const legDays = trip.days.filter((d: any) => d.dayNum >= leg.from && d.dayNum <= leg.to);
+  return {
+    ...leg,
+    firstDayId: legDays[0]?.id,
+    dayIds: legDays.map((d: any) => d.id),
+    dayCount: legDays.length,
+    distanceKm: Math.round(legDays.reduce((s: number, d: any) => s + d.stats.distanceKm, 0)),
+  };
+}).filter((beat) => beat.firstDayId);
+
+const beatByFirstDayId: Record<string, any> = Object.fromEntries(
+  mapBeats.map((beat) => [beat.firstDayId, beat])
+);
+
+// Slim payload for the client-side map (skip photo data, keep geometry + stats it needs).
+const clientTrip = {
+  days: trip.days.map((d: any) => ({
+    id: d.id,
+    routeSegments: d.routeSegments,
+    stats: { elevationGainM: d.stats.elevationGainM },
+  })),
+};
+
+// Shared equirectangular projection (with a cos-latitude correction) for the
+// per-day locator maps, so every day's mini-map uses the same scale/frame.
+const MAP_W = 190;
+const MAP_H = 210;
+const MAP_PAD = 8;
+
+function bboxOfCoords(coordsList: number[][][]) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (const coords of coordsList) {
+    for (const [lon, lat] of coords) {
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+  }
+  return { minLon, minLat, maxLon, maxLat };
+}
+
+const tripBbox = bboxOfCoords([...trip.days.flatMap((d: any) => d.routeSegments), ...japanOutlineRings]);
+const meanLat = (tripBbox.minLat + tripBbox.maxLat) / 2;
+const cosLat = Math.cos((meanLat * Math.PI) / 180);
+const bboxWidth = (tripBbox.maxLon - tripBbox.minLon) * cosLat;
+const bboxHeight = tripBbox.maxLat - tripBbox.minLat;
+const MAP_ZOOM = 1;
+const mapScale = Math.min((MAP_W - MAP_PAD * 2) / bboxWidth, (MAP_H - MAP_PAD * 2) / bboxHeight) * MAP_ZOOM;
+
+const mapProjection = {
+  minLon: tripBbox.minLon,
+  maxLat: tripBbox.maxLat,
+  cosLat,
+  scale: mapScale,
+  offsetX: (MAP_W - bboxWidth * mapScale) / 2 + MAP_W * 0.02,
+  offsetY: (MAP_H - bboxHeight * mapScale) / 2,
+  width: MAP_W,
+  height: MAP_H,
+};
+
+function project([lon, lat]: [number, number]): [number, number] {
+  const x = (lon - mapProjection.minLon) * mapProjection.cosLat * mapProjection.scale + mapProjection.offsetX;
+  const y = (mapProjection.maxLat - lat) * mapProjection.scale + mapProjection.offsetY;
+  return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+}
+
+function decimate(coords: number[][], stride: number) {
+  return coords.filter((_: number[], i: number) => i % stride === 0 || i === coords.length - 1);
+}
+
+// Full-trip route, heavily decimated, drawn once as a shared <symbol> so every
+// day's locator card can reuse it via <use> instead of repeating the path.
+// Three tiers of emphasis: what the trip was, what it took, and the texture
+// around the edges. Imperial conversions live in the label so no value wraps.
+const LEAD_STATS = [
+  { value: `${trip.meta.totalDistanceKm.toLocaleString()} km`, label: `${trip.meta.startLocation} → ${trip.meta.endLocation}` },
+  { value: String(trip.meta.totalDays), label: 'Days on the road' },
+  { value: `${trip.meta.totalElevationM.toLocaleString()} m`, label: 'Climbed (47,110 ft)' },
+];
+
+const EFFORT_STATS = [
+  { value: trip.meta.totalMovingTime, label: 'Moving time' },
+  { value: '86.7 km', label: 'Average day (53.9 mi)' },
+  { value: '22.57 km/h', label: 'Average speed (14 mph)' },
+  { value: '980 m', label: 'Biggest climbing day (3,215 ft)' },
+  { value: '77,932', label: 'Calories burned' },
+  { value: '5,944', label: 'Calories, hardest day' },
+  { value: '2,886', label: 'Calories, daily average' },
+];
+
+const TEXTURE_STATS = [
+  { value: '449,457', label: 'pedal strokes' },
+  { value: '132', label: 'tunnels' },
+  { value: '51', label: 'convenience stores' },
+  { value: '$4,277', label: 'total cost' },
+  { value: '$158.39', label: 'per day' },
+  { value: 'Too many to count', label: 'smiles' },
+];
+
+const tripOutlineD = trip.days
+  .flatMap((d: any) => d.routeSegments)
+  .filter((seg: number[][]) => seg.length > 1)
+  .map((seg: number[][]) => {
+    const pts = decimate(seg, 6).map(project);
+    return 'M' + pts.map((p) => p.join(',')).join('L');
+  })
+  .join(' ');
+
+// Simplified Japan landmass (Natural Earth 110m), drawn as a filled silhouette
+// behind the route so each locator card reads as an actual map, not just lines.
+const japanLandD = (japanOutlineRings as number[][][])
+  .map((ring) => {
+    const pts = ring.map((c) => project(c as [number, number]));
+    return 'M' + pts.map((p) => p.join(',')).join('L') + 'Z';
+  })
+  .join(' ');
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{trip.meta.title}</title>
+  <meta name="description" content={`Cycling ${trip.meta.totalDistanceKm}km from ${trip.meta.startLocation} to ${trip.meta.endLocation}, ${trip.meta.startDate} to ${trip.meta.endDate}.`} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap"
+  />
+</head>
+<body>
+  <script type="application/json" id="trip-data" set:html={JSON.stringify(clientTrip)} />
+
+  <nav class="day-nav">
+    {trip.days.map((day: any) => (
+      <a href={`#day-${day.id}`} data-day-id={day.id} title={day.label}></a>
+    ))}
+  </nav>
+
+  <div class="layout">
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-eyebrow">{trip.meta.startDate} — {trip.meta.endDate}</div>
+        <h1>{trip.meta.title}</h1>
+        <div class="hero-stats hero-stats--lead">
+          {LEAD_STATS.map((stat) => (
+            <div class="hero-stat"><div class="value">{stat.value}</div><div class="label">{stat.label}</div></div>
+          ))}
+        </div>
+        <div class="hero-stats hero-stats--effort">
+          {EFFORT_STATS.map((stat) => (
+            <div class="hero-stat"><div class="value">{stat.value}</div><div class="label">{stat.label}</div></div>
+          ))}
+        </div>
+        <div class="hero-stats hero-stats--texture">
+          {TEXTURE_STATS.map((stat) => (
+            <span class="hero-stat"><span class="value">{stat.value}</span> <span class="label">{stat.label}</span></span>
+          ))}
+        </div>
+      </div>
+      <div class="scroll-cue">Scroll to ride ↓</div>
+    </section>
+
+    {preludeChapters.length > 0 && (
+      <section class="prelude">
+        <div class="prelude-eyebrow">Before the Ride</div>
+        {preludeChapters.map((chapter: any, i: number) => (
+          <article class={`prelude-post${i % 2 === 1 ? ' prelude-post--flip' : ''}`}>
+            <div class="prelude-post-body">
+              <div class="prelude-post-text">
+                <h3 class="prelude-post-title">{chapter.title}</h3>
+                {parsePostBlocks(chapter.fullText || chapter.desc).map((block) =>
+                  block.type === 'stats' ? (
+                    <>
+                      {block.label && <div class="chapter-facts-label">{block.label}</div>}
+                      <ul class="chapter-facts">
+                        {block.items.map((line: string) => (
+                          <li>{line}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p class="chapter-desc">{block.text}</p>
+                  )
+                )}
+                <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
+              </div>
+              {chapter.photos && chapter.photos.length > 0 && (
+                <div class={`prelude-post-media${chapter.photos.length > 8 ? ' prelude-post-media--dense' : ''}`}>
+                  {chapter.photos.map((photo: any) => (
+                    <img
+                      src={`/photos/${photo.filename}`}
+                      alt={`Photo from ${chapter.title}`}
+                      width={photo.width || undefined}
+                      height={photo.height || undefined}
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            {chapter.heroPhoto && (
+              <div class="day-hero-photo">
+                <img src={`/photos/${chapter.heroPhoto.filename}`} alt={`Featured photo from ${chapter.title}`} loading="lazy" />
+              </div>
+            )}
+          </article>
+        ))}
+      </section>
+    )}
+
+    <div class="map-pane">
+      <div id="map"></div>
+      <div class="map-vignette"></div>
+    </div>
+
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="trip-outline-symbol" viewBox={`0 0 ${MAP_W} ${MAP_H}`}>
+        <path d={japanLandD} class="locator-land" />
+        <path d={tripOutlineD} class="trip-outline-line" />
+      </symbol>
+    </svg>
+
+    <div class="content-pane">
+      {trip.days.map((day: any) => (
+        <>
+          {beatByFirstDayId[day.id] && (
+            <section class="map-beat" data-beat-days={beatByFirstDayId[day.id].dayIds.join(',')}>
+              <div class="map-beat-inner">
+                <div class="map-beat-kicker">{beatByFirstDayId[day.id].part}</div>
+                <h2 class="map-beat-name">{beatByFirstDayId[day.id].name}</h2>
+                <div class="map-beat-meta">
+                  <span>{beatByFirstDayId[day.id].distanceKm.toLocaleString()} km</span>
+                  <span>{beatByFirstDayId[day.id].dayCount} {beatByFirstDayId[day.id].dayCount === 1 ? 'day' : 'days'}</span>
+                </div>
+              </div>
+            </section>
+          )}
+          <DayCard day={day} chapters={chaptersByAnchorDay[day.id] || []} mapProjection={mapProjection} />
+        </>
+      ))}
+    </div>
+
+    <section class="film">
+      <div class="film-intro">
+        <div class="film-kicker">The Film</div>
+        <h2 class="film-title">{trip.meta.startLocation} → {trip.meta.endLocation}</h2>
+        <div class="film-meta">6 min 30 sec · no narration</div>
+      </div>
+      <div class="film-frame">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/TyLsfqx_p9Q"
+          title={`${trip.meta.startLocation} → ${trip.meta.endLocation} — trip film`}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+          loading="lazy"
+        ></iframe>
+      </div>
+    </section>
+
+    {epilogueChapters.length > 0 && (
+      <section class="epilogue">
+        <div class="prelude-eyebrow">Reflections</div>
+        {epilogueChapters.map((chapter: any, i: number) => (
+          <article class={`prelude-post${i % 2 === 1 ? ' prelude-post--flip' : ''}`}>
+            <div class="prelude-post-body">
+              <div class="prelude-post-text">
+                <h3 class="prelude-post-title">{chapter.title}</h3>
+                {parsePostBlocks(chapter.fullText || chapter.desc).map((block) =>
+                  block.type === 'stats' ? (
+                    <>
+                      {block.label && <div class="chapter-facts-label">{block.label}</div>}
+                      <ul class="chapter-facts">
+                        {block.items.map((line: string) => (
+                          <li>{line}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p class="chapter-desc">{block.text}</p>
+                  )
+                )}
+                <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
+              </div>
+              {chapter.photos && chapter.photos.length > 0 && (
+                <div class={`prelude-post-media${chapter.photos.length > 8 ? ' prelude-post-media--dense' : ''}`}>
+                  {chapter.photos.map((photo: any) => (
+                    <img
+                      src={`/photos/${photo.filename}`}
+                      alt={`Photo from ${chapter.title}`}
+                      width={photo.width || undefined}
+                      height={photo.height || undefined}
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            {chapter.heroPhoto && (
+              <div class="day-hero-photo">
+                <img src={`/photos/${chapter.heroPhoto.filename}`} alt={`Featured photo from ${chapter.title}`} loading="lazy" />
+              </div>
+            )}
+          </article>
+        ))}
+      </section>
+    )}
+  </div>
+
+  <script src="../scripts/site.js"></script>
+</body>
+</html>

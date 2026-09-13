@@ -1,0 +1,840 @@
+:root {
+  --bg: #14110f;
+  --panel: #1c1815;
+  --panel-border: #2e2924;
+  --text: #efe0c0;
+  --muted: #a89d8d;
+  --accent: #e8552c;
+  --accent-soft: rgba(232, 85, 44, 0.18);
+  --line-inactive: rgba(239, 224, 192, 0.25);
+  --card-bg: rgba(239, 224, 192, 0.86);
+  --card-bg-solid: rgba(239, 224, 192, 0.95);
+  --card-text: #0a1f3d;
+  --card-muted: #47607a;
+  /* Serif carries the human voice (titles, prose); sans carries the
+     instrumentation (numbers, labels, navigation). */
+  --font-serif: "Newsreader", Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: var(--font-serif);
+  --font-body: var(--font-sans);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; }
+
+.layout {
+  position: relative;
+}
+
+.map-pane {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 0;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: rgba(10, 10, 10, 0.25);
+}
+
+.content-pane {
+  position: relative;
+  z-index: 2;
+  padding: 0 48px;
+}
+
+.hero {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 48px;
+}
+
+.hero-eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+.hero h1 {
+  font-size: clamp(36px, 6vw, 76px);
+  line-height: 1.05;
+  width: 100%;
+}
+
+.hero-inner {
+  background: var(--card-bg);
+  color: var(--card-text);
+  --muted: var(--card-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 40px 44px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.hero-stats .value {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.hero-stats .label {
+  font-family: var(--font-sans);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Tier 1 — what the trip was. */
+.hero-stats--lead {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px 40px;
+  margin-top: 40px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(10, 31, 61, 0.14);
+}
+
+.hero-stats--lead .value {
+  font-size: clamp(38px, 4.4vw, 58px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.hero-stats--lead .label {
+  display: block;
+  font-size: 11px;
+  margin-top: 10px;
+}
+
+/* Tier 2 — what it took. */
+.hero-stats--effort {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 22px 28px;
+  margin-top: 28px;
+}
+
+.hero-stats--effort .value {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.hero-stats--effort .label {
+  display: block;
+  font-size: 9px;
+  margin-top: 5px;
+}
+
+/* Tier 3 — texture, set as a quiet running footnote. */
+.hero-stats--texture {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 26px;
+  margin-top: 32px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(10, 31, 61, 0.14);
+  font-size: 13px;
+}
+
+.hero-stats--texture .value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hero-stats--texture .label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: 32px;
+  left: 48px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.prelude {
+  position: relative;
+  z-index: 2;
+  padding: 90px 56px 100px;
+}
+
+.prelude-eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 13px;
+  margin-bottom: 32px;
+  max-width: 860px;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.85);
+}
+
+.prelude-post {
+  margin-bottom: 64px;
+}
+
+.prelude-post:last-child { margin-bottom: 0; }
+
+.prelude-post-body {
+  background: var(--card-bg);
+  color: var(--card-text);
+  --muted: var(--card-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 28px 36px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.prelude-post-title {
+  font-size: clamp(24px, 2.6vw, 34px);
+  letter-spacing: -0.015em;
+  margin-bottom: 18px;
+}
+
+/* Asymmetric: prose holds a readable measure, photos run as a vertical strip
+   down the side alongside it. The card hugs its content rather than spanning
+   the viewport, so more of the map stays visible. */
+.prelude-post-body {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) 300px;
+  gap: 48px;
+  align-items: start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.prelude-post-body:not(:has(.prelude-post-media)) {
+  grid-template-columns: minmax(0, 640px);
+}
+
+.prelude-post--flip .prelude-post-body {
+  grid-template-columns: 300px minmax(0, 640px);
+}
+
+.prelude-post--flip .prelude-post-text {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.prelude-post--flip .prelude-post-media {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.prelude-post--flip .prelude-post-body {
+  border-left: none;
+  border-right: 3px solid var(--accent);
+}
+
+/* One photo per row, natural proportions, spaced down the full height of the
+   text so the strip accompanies the reading instead of stopping short. */
+.prelude-post-media {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  gap: 14px;
+}
+
+/* Photo-heavy posts would run several times longer than their text in a
+   single file, so they pair up into two narrower columns instead. */
+.prelude-post-media--dense {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-content: start;
+}
+
+.prelude-post-media img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+
+.prelude-post-media img:hover {
+  transform: scale(1.02);
+}
+
+/* Hard cap on the prose measure, so it stays readable even when the two
+   columns collapse into one on narrower screens. */
+.prelude-post-text {
+  max-width: 640px;
+}
+
+.prelude-post-body .chapter-desc {
+  font-size: 17px;
+}
+
+
+.day-section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 72px;
+  padding: 80px 56px;
+  margin: 80px 0;
+}
+
+/* Card-free beat between legs: nothing but the map and one island name. */
+.map-beat {
+  min-height: 92vh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 56px;
+  margin: 40px 0;
+}
+
+.map-beat-inner {
+  max-width: 520px;
+}
+
+.map-beat-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+
+.map-beat-name {
+  font-family: var(--font-serif);
+  font-size: clamp(56px, 9vw, 132px);
+  line-height: 0.94;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.85), 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.map-beat-meta {
+  display: flex;
+  gap: 28px;
+  margin-top: 26px;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+
+.day-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-eyebrow {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.85);
+}
+
+.day-eyebrow .accent { color: var(--accent); }
+
+.day-title {
+  font-size: clamp(24px, 3vw, 36px);
+  margin-bottom: 0;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.9);
+}
+
+.day-top-row {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  width: 684px;
+  max-width: 100%;
+}
+
+/* Pull the next block up so the gap after the stat/locator row matches the
+   16px gap between rows of photos, instead of the day-section's larger
+   72px inter-block rhythm. */
+.day-top-row + .video-block,
+.day-top-row + .photo-grid,
+.day-top-row + .no-photos-note {
+  margin-top: -56px;
+}
+
+.stat-card {
+  flex: 0 0 448px;
+  width: 448px;
+  height: 180px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--card-bg-solid);
+  color: var(--card-text);
+  --muted: var(--card-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 16px 24px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.locator-card {
+  flex: 0 0 216px;
+  width: 216px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg-solid);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.locator-svg {
+  width: auto;
+  height: 158px;
+  display: block;
+  pointer-events: none;
+}
+
+.locator-land {
+  fill: #12294a;
+  stroke: none;
+}
+
+.trip-outline-line {
+  fill: none;
+  stroke: rgba(239, 224, 192, 0.55);
+  stroke-width: 1;
+}
+
+.locator-day-path {
+  fill: none;
+  stroke: #ff6a2e;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 2px rgba(255, 106, 46, 0.85));
+}
+
+.locator-start-dot {
+  fill: #ff6a2e;
+}
+
+.stat-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.stat {
+  min-width: 0;
+}
+
+.stat .value {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stat .label {
+  font-size: 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.chapter-block {
+  background: var(--card-bg);
+  color: var(--card-text);
+  --muted: var(--card-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-left: 3px solid var(--accent);
+  padding: 24px 32px;
+  border-radius: 4px;
+  max-width: 680px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.chapter-title {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+.chapter-desc {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+/* The day's tally at the foot of a post: data, so sans and tightly set
+   rather than carrying the prose paragraph spacing. */
+.chapter-facts-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.chapter-facts {
+  margin: 0 0 16px;
+  padding-left: 17px;
+  list-style: disc;
+}
+
+.chapter-facts li {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--muted);
+}
+
+.chapter-facts li::marker {
+  color: var(--accent);
+}
+
+.chapter-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.chapter-link:hover { text-decoration: underline; }
+
+.photo-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.photo-strip img {
+  height: 220px;
+  width: auto;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.video-block {
+  width: 100%;
+  max-width: 680px;
+}
+
+.video-block video {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+/* Breaks out of the day-section's padded, right-aligned column to span the
+   full viewport width — independent of any ancestor's own width/padding. */
+.day-hero-photo {
+  align-self: flex-start;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  height: 80vh;
+  max-height: 720px;
+  overflow: hidden;
+  position: relative;
+}
+
+.day-hero-photo img {
+  position: absolute;
+  top: -150px;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 300px);
+  object-fit: cover;
+  display: block;
+  will-change: transform;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 216px);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .prelude-post-body,
+  .prelude-post--flip .prelude-post-body,
+  .prelude-post-body:not(:has(.prelude-post-media)) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    width: auto;
+  }
+  .prelude-post--flip .prelude-post-text,
+  .prelude-post--flip .prelude-post-media {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  /* Stacked layout: photos fan back out into a grid under the text. */
+  .prelude-post-media {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .prelude-post-media img {
+    height: 150px;
+    object-fit: cover;
+  }
+}
+
+.photo-grid img {
+  width: 100%;
+  height: 180px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+
+.photo-grid img:hover {
+  transform: scale(1.03);
+}
+
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background: rgba(5, 8, 12, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.lightbox.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  cursor: zoom-out;
+}
+
+.no-photos-note {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.elevation-chart {
+  width: 100%;
+  height: 70px;
+  margin: 10px 0 6px;
+  display: block;
+}
+.elevation-chart path.fill { fill: var(--accent-soft); }
+.elevation-chart path.line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+
+.day-nav {
+  position: fixed;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 8px 4px;
+}
+
+.day-nav a {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-inactive);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.day-nav a.active {
+  background: var(--accent);
+  transform: scale(1.6);
+}
+
+/* The trip film, sitting as the payoff between the last day and the
+   reflections. Click-to-play rather than autoplay: at six and a half minutes
+   this is something to sit down with, and nothing downloads until asked. */
+.film {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  padding: 110px 56px 70px;
+}
+
+.film-intro {
+  text-align: center;
+}
+
+.film-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+
+.film-title {
+  font-family: var(--font-serif);
+  font-size: clamp(32px, 4.4vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.85), 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.film-meta {
+  margin-top: 16px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.75;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+
+.film-frame {
+  width: 100%;
+  max-width: 1180px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.film-frame iframe {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  display: block;
+  border: 0;
+}
+
+.epilogue {
+  position: relative;
+  z-index: 2;
+  padding: 40px 56px 100px;
+}
+
+@media (max-width: 860px) {
+  .map-pane {
+    position: sticky;
+    top: 0;
+    height: 38vh;
+    z-index: 1;
+  }
+  .map-vignette { background: linear-gradient(to bottom, transparent 60%, rgba(10,10,10,0.7)); }
+  .content-pane, .epilogue, .prelude { padding: 0 20px; }
+  .prelude { padding-top: 48px; padding-bottom: 56px; }
+  .hero { padding: 0 20px; min-height: 62vh; }
+  .hero-inner { max-width: 100%; padding: 28px; }
+  .day-nav { display: none; }
+  .map-beat { min-height: 62vh; padding: 0 20px; margin: 8px 0; }
+  .film { padding: 56px 20px 40px; gap: 20px; }
+  .film-frame { border-radius: 10px; }
+  .map-beat-meta { gap: 18px; margin-top: 18px; font-size: 11px; }
+  .day-section { align-items: stretch; gap: 28px; padding: 28px 20px; min-height: unset; margin: 16px 0; }
+  .day-top-row { flex-direction: column; }
+  .day-top-row + .video-block,
+  .day-top-row + .photo-grid,
+  .day-top-row + .no-photos-note {
+    margin-top: -12px;
+  }
+  .stat-card { max-width: 100%; }
+  .locator-card { align-self: center; }
+  .chapter-block, .prelude-post-body .chapter-desc { max-width: 100%; }
+  .photo-grid { grid-template-columns: 1fr; }
+  .photo-grid img { height: 240px; }
+}

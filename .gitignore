@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output (Netlify rebuilds this)
+site/dist/
+site/.astro/
+
+# Raw source material (originals, not needed to build the site)
+data/raw/
+
+# Caches
+scripts/lib/.exif-cache.json
+
+# OS
+.DS_Store

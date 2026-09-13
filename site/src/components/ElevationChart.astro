@@ -1,0 +1,35 @@
+---
+interface Props {
+  profile: [number, number][]; // [distanceMeters, elevationMeters][]
+}
+const { profile } = Astro.props as Props;
+
+const width = 600;
+const height = 70;
+
+let pathLine = '';
+let pathFill = '';
+
+if (profile.length > 1) {
+  const maxDist = profile[profile.length - 1][0] || 1;
+  const eles = profile.map((p) => p[1]);
+  const minEle = Math.min(...eles);
+  const maxEle = Math.max(...eles, minEle + 1);
+
+  const toXY = ([d, e]: [number, number]) => {
+    const x = (d / maxDist) * width;
+    const y = height - ((e - minEle) / (maxEle - minEle)) * (height - 6) - 3;
+    return [x, y];
+  };
+
+  const points = profile.map(toXY);
+  pathLine = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  pathFill = `${pathLine} L${width},${height} L0,${height} Z`;
+}
+---
+{profile.length > 1 && (
+  <svg class="elevation-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+    <path class="fill" d={pathFill} />
+    <path class="line" d={pathLine} />
+  </svg>
+)}

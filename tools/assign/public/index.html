@@ -1,0 +1,390 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Assign Photos &amp; Chapters — Japan Bike Trip</title>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --panel: #ffffff;
+    --border: #ddd6c9;
+    --text: #2b2a26;
+    --muted: #7a7568;
+    --accent: #c1440e;
+    --accent-soft: #f2ded3;
+    --ok: #2f7a4f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .tab {
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  main { padding: 24px 28px 80px; max-width: 1100px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .photo-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .photo-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+    background: #eee;
+  }
+  .photo-card video {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+    background: #000;
+  }
+  .photo-meta { padding: 10px 12px; }
+  .photo-filename { font-size: 12px; color: var(--muted); margin-bottom: 2px; word-break: break-all; }
+  .photo-captured { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .sound-toggle { font-size: 12px; display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  select, .day-select {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    background: white;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .saved-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    margin-left: 6px;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .saved-dot.show { opacity: 1; }
+
+  .post-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .post-title { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .post-desc { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.4; }
+  .post-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .range-group { display: flex; gap: 8px; align-items: center; }
+  .range-group label { font-size: 11px; color: var(--muted); }
+  .range-group select { width: 140px; }
+  .not-day-specific { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  a.post-link { font-size: 12px; color: var(--accent); text-decoration: none; }
+
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .count { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Japan Bike Trip — Assignment Tool</h1>
+  <div class="sub">Assign photos, videos, and blog chapters to days. Saves automatically to <code>data/photo-assignments.json</code>, <code>data/video-assignments.json</code>, and <code>data/chapter-assignments.json</code>.</div>
+  <div class="tabs">
+    <div class="tab active" data-view="photos">Photos</div>
+    <div class="tab" data-view="videos">Videos</div>
+    <div class="tab" data-view="chapters">Blog Chapters</div>
+  </div>
+</header>
+<main>
+  <div class="view active" id="view-photos">
+    <div class="toolbar">
+      <div class="count" id="photo-count"></div>
+    </div>
+    <div class="photo-grid" id="photo-grid"></div>
+  </div>
+  <div class="view" id="view-videos">
+    <div class="toolbar">
+      <div class="count" id="video-count"></div>
+    </div>
+    <div class="photo-grid" id="video-grid"></div>
+  </div>
+  <div class="view" id="view-chapters">
+    <div class="toolbar">
+      <div class="count" id="post-count"></div>
+    </div>
+    <div id="post-list"></div>
+  </div>
+</main>
+<script>
+let DAYS = [];
+let dayOptionsHtml = '';
+
+function dayLabel(id) {
+  const d = DAYS.find(x => x.id === id);
+  return d ? `${d.label} — ${d.title}` : id;
+}
+
+function buildDayOptions(selectedId, includeBlank) {
+  let html = '';
+  if (includeBlank) html += `<option value="">— remove from site —</option>`;
+  for (const d of DAYS) {
+    const sel = d.id === selectedId ? 'selected' : '';
+    html += `<option value="${d.id}" ${sel}>${d.label} — ${d.title}</option>`;
+  }
+  return html;
+}
+
+async function init() {
+  DAYS = await fetch('/api/days').then(r => r.json());
+  await loadPhotos();
+  await loadVideos();
+  await loadPosts();
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    });
+  });
+}
+
+async function loadPhotos() {
+  const photos = await fetch('/api/photos').then(r => r.json());
+  document.getElementById('photo-count').textContent = `${photos.length} photo${photos.length === 1 ? '' : 's'}`;
+  const grid = document.getElementById('photo-grid');
+  grid.innerHTML = '';
+
+  // Track which photo currently holds the one-per-day full-width slot, so
+  // checking a new one can demote whichever photo held that day's slot before.
+  const fullWidthByDay = {};
+  for (const p of photos) {
+    if (p.fullWidth && p.assignedDay) fullWidthByDay[p.assignedDay] = p.filename;
+  }
+  const cardsByFilename = {};
+
+  for (const p of photos) {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    const isSuggested = p.assignedDay && p.assignedDay === p.suggestedDay;
+    card.innerHTML = `
+      <img src="${p.url}" loading="lazy" />
+      <div class="photo-meta">
+        <div class="photo-filename">${p.filename}</div>
+        <div class="photo-captured">${p.capturedAt ? p.capturedAt.replace('T', ' ') + ' (JST)' : 'no timestamp found'}</div>
+        <select class="day-select" data-filename="${p.filename}">
+          ${buildDayOptions(p.assignedDay, true)}
+        </select>
+        ${isSuggested ? '<span class="badge">auto-suggested</span>' : ''}
+        <span class="saved-dot"></span>
+        <label class="sound-toggle">
+          <input type="checkbox" class="fullwidth-cb" ${p.fullWidth ? 'checked' : ''} />
+          full-width feature photo for this day (max 1)
+        </label>
+      </div>
+    `;
+    const select = card.querySelector('select');
+    const fwCb = card.querySelector('.fullwidth-cb');
+    const dot = card.querySelector('.saved-dot');
+    cardsByFilename[p.filename] = { select, fwCb };
+
+    const persist = async (filename, day, fullWidth) => {
+      await fetch('/api/assignments/photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [filename]: day ? (fullWidth ? { day, fullWidth: true } : day) : null })
+      });
+    };
+
+    const save = async () => {
+      const day = select.value;
+      if (fwCb.checked && day) {
+        const prevFilename = fullWidthByDay[day];
+        if (prevFilename && prevFilename !== p.filename) {
+          const prev = cardsByFilename[prevFilename];
+          if (prev) {
+            prev.fwCb.checked = false;
+            await persist(prevFilename, prev.select.value, false);
+          }
+        }
+        fullWidthByDay[day] = p.filename;
+      } else if (fullWidthByDay[day] === p.filename) {
+        delete fullWidthByDay[day];
+      }
+      await persist(p.filename, day, fwCb.checked);
+      dot.classList.add('show');
+      setTimeout(() => dot.classList.remove('show'), 1200);
+      card.querySelector('.badge')?.remove();
+    };
+    select.addEventListener('change', save);
+    fwCb.addEventListener('change', save);
+    grid.appendChild(card);
+  }
+}
+
+async function loadVideos() {
+  const videos = await fetch('/api/videos').then(r => r.json());
+  document.getElementById('video-count').textContent = `${videos.length} video${videos.length === 1 ? '' : 's'}`;
+  const grid = document.getElementById('video-grid');
+  grid.innerHTML = '';
+  for (const v of videos) {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    const isSuggested = v.assignedDay && v.assignedDay === v.suggestedDay;
+    card.innerHTML = `
+      <video src="${v.url}" controls muted preload="metadata"></video>
+      <div class="photo-meta">
+        <div class="photo-filename">${v.filename}</div>
+        <div class="photo-captured">${v.capturedAt ? v.capturedAt.replace('T', ' ') + ' (JST)' : 'no timestamp found'}</div>
+        <select class="day-select" data-filename="${v.filename}">
+          ${buildDayOptions(v.assignedDay, true)}
+        </select>
+        ${isSuggested ? '<span class="badge">auto-suggested</span>' : ''}
+        <span class="saved-dot"></span>
+        <label class="sound-toggle">
+          <input type="checkbox" class="sound-cb" ${v.sound ? 'checked' : ''} />
+          play with sound on the site (default: muted)
+        </label>
+      </div>
+    `;
+    const select = card.querySelector('select');
+    const soundCb = card.querySelector('.sound-cb');
+    const dot = card.querySelector('.saved-dot');
+    const save = async () => {
+      await fetch('/api/assignments/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [v.filename]: select.value ? { day: select.value, sound: soundCb.checked } : null })
+      });
+      dot.classList.add('show');
+      setTimeout(() => dot.classList.remove('show'), 1200);
+      card.querySelector('.badge')?.remove();
+    };
+    select.addEventListener('change', save);
+    soundCb.addEventListener('change', save);
+    grid.appendChild(card);
+  }
+}
+
+async function loadPosts() {
+  const posts = await fetch('/api/posts').then(r => r.json());
+  const savedChapters = await fetch('/api/assignments/chapters').then(r => r.json());
+  document.getElementById('post-count').textContent = `${posts.length} blog posts`;
+  const list = document.getElementById('post-list');
+  list.innerHTML = '';
+  for (const post of posts) {
+    const saved = savedChapters[post.slug] || {};
+    const isMeta = post.category === 'meta' || post.category === 'prologue' || post.category === 'epilogue';
+    const notDaySpecific = saved.notDaySpecific ?? isMeta;
+
+    const card = document.createElement('div');
+    card.className = 'post-card';
+    card.innerHTML = `
+      <div class="post-title">${post.title || post.slug} <span class="badge">${post.category}</span></div>
+      <div class="post-desc">${post.desc || ''}</div>
+      <div class="post-row">
+        <div class="range-group">
+          <label>From</label>
+          <select class="from-day" ${notDaySpecific ? 'disabled' : ''}>${buildDayOptions(saved.from, true)}</select>
+        </div>
+        <div class="range-group">
+          <label>To</label>
+          <select class="to-day" ${notDaySpecific ? 'disabled' : ''}>${buildDayOptions(saved.to, true)}</select>
+        </div>
+        <a class="post-link" href="${post.url}" target="_blank">view post ↗</a>
+        <label class="not-day-specific">
+          <input type="checkbox" class="not-specific-cb" ${notDaySpecific ? 'checked' : ''} />
+          not day-specific (prologue/epilogue)
+        </label>
+        <span class="saved-dot"></span>
+      </div>
+    `;
+
+    const fromSel = card.querySelector('.from-day');
+    const toSel = card.querySelector('.to-day');
+    const cb = card.querySelector('.not-specific-cb');
+    const dot = card.querySelector('.saved-dot');
+
+    const save = async () => {
+      await fetch('/api/assignments/chapters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          [post.slug]: {
+            from: fromSel.value || null,
+            to: toSel.value || null,
+            notDaySpecific: cb.checked,
+          }
+        })
+      });
+      dot.classList.add('show');
+      setTimeout(() => dot.classList.remove('show'), 1200);
+    };
+
+    fromSel.addEventListener('change', save);
+    toSel.addEventListener('change', save);
+    cb.addEventListener('change', () => {
+      fromSel.disabled = cb.checked;
+      toSel.disabled = cb.checked;
+      save();
+    });
+
+    list.appendChild(card);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
