@@ -24,16 +24,33 @@ const MIN_STAT_LINES = 2;
 // than prose, without being mistaken for the day-tally stat shape above.
 const BULLET_LINE = /^[-•]\s+/;
 
+// The scraped source drops heading markup, so section heads ("Focus is
+// essential", "Kobe Beef Menu") arrive as bare lines. They're recognisable as
+// short, unpunctuated, and followed by a longer paragraph.
+const HEADING_MAX_WORDS = 14;
+const ENDS_LIKE_SENTENCE = /[.!?:;,"”'’)\]…]$/;
+
+function wordCount(line: string): number {
+  return line.split(/\s+/).length;
+}
+
 function isStatLine(line: string): boolean {
   return STAT_DASH.test(line) || STAT_COLON.test(line);
 }
 
 function isLooseStatLine(line: string): boolean {
-  return STAT_COLON_LOOSE.test(line) && line.split(/\s+/).length <= LOOSE_MAX_WORDS;
+  return STAT_COLON_LOOSE.test(line) && wordCount(line) <= LOOSE_MAX_WORDS;
+}
+
+function isHeading(line: string, next: string | undefined): boolean {
+  if (!next || DAY_MARKER.test(line) || STAT_COLON_LOOSE.test(line) || isStatLine(line)) return false;
+  const words = wordCount(line);
+  return words <= HEADING_MAX_WORDS && !ENDS_LIKE_SENTENCE.test(line) && wordCount(next) > words;
 }
 
 export type PostBlock =
   | { type: 'para'; text: string }
+  | { type: 'heading'; text: string }
   | { type: 'stats'; label: string | null; items: string[] };
 
 export function parsePostBlocks(text: string | null | undefined): PostBlock[] {
@@ -63,6 +80,8 @@ export function parsePostBlocks(text: string | null | undefined): PostBlock[] {
       }
       blocks.push({ type: 'stats', label, items: lines.slice(i, end) });
       i = end - 1;
+    } else if (isHeading(lines[i], lines[i + 1])) {
+      blocks.push({ type: 'heading', text: lines[i] });
     } else {
       blocks.push({ type: 'para', text: lines[i] });
     }

@@ -3,7 +3,7 @@ import '../styles/global.css';
 import DayCard from '../components/DayCard.astro';
 import trip from '../data/trip.json';
 import japanOutlineRings from '../data/japan-outline.json';
-import { parsePostBlocks } from '../lib/postText';
+import FeaturePost from '../components/FeaturePost.astro';
 
 const chaptersByAnchorDay: Record<string, any[]> = {};
 const dayOnlyChapters = trip.chapters.filter((c: any) => !c.notDaySpecific && c.dayIds.length > 0);
@@ -106,8 +106,6 @@ function decimate(coords: number[][], stride: number) {
   return coords.filter((_: number[], i: number) => i % stride === 0 || i === coords.length - 1);
 }
 
-// Full-trip route, heavily decimated, drawn once as a shared <symbol> so every
-// day's locator card can reuse it via <use> instead of repeating the path.
 // Three tiers of emphasis: what the trip was, what it took, and the texture
 // around the edges. Imperial conversions live in the label so no value wraps.
 const LEAD_STATS = [
@@ -135,6 +133,8 @@ const TEXTURE_STATS = [
   { value: 'Too many to count', label: 'smiles' },
 ];
 
+// Full-trip route, heavily decimated, drawn once as a shared <symbol> so every
+// day's locator card can reuse it via <use> instead of repeating the path.
 const tripOutlineD = trip.days
   .flatMap((d: any) => d.routeSegments)
   .filter((seg: number[][]) => seg.length > 1)
@@ -171,7 +171,7 @@ const japanLandD = (japanOutlineRings as number[][][])
 
   <nav class="day-nav">
     {trip.days.map((day: any) => (
-      <a href={`#day-${day.id}`} data-day-id={day.id} title={day.label}></a>
+      <a href={`#day-${day.id}`} data-day-id={day.id} title={day.label} aria-label={day.label}></a>
     ))}
   </nav>
 
@@ -203,46 +203,7 @@ const japanLandD = (japanOutlineRings as number[][][])
       <section class="prelude">
         <div class="prelude-eyebrow">Before the Ride</div>
         {preludeChapters.map((chapter: any, i: number) => (
-          <article class={`prelude-post${i % 2 === 1 ? ' prelude-post--flip' : ''}`}>
-            <div class="prelude-post-body">
-              <div class="prelude-post-text">
-                <h3 class="prelude-post-title">{chapter.title}</h3>
-                {parsePostBlocks(chapter.fullText || chapter.desc).map((block) =>
-                  block.type === 'stats' ? (
-                    <>
-                      {block.label && <div class="chapter-facts-label">{block.label}</div>}
-                      <ul class="chapter-facts">
-                        {block.items.map((line: string) => (
-                          <li>{line}</li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p class="chapter-desc">{block.text}</p>
-                  )
-                )}
-                <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
-              </div>
-              {chapter.photos && chapter.photos.length > 0 && (
-                <div class={`prelude-post-media${chapter.photos.length > 8 ? ' prelude-post-media--dense' : ''}`}>
-                  {chapter.photos.map((photo: any) => (
-                    <img
-                      src={`/photos/${photo.filename}`}
-                      alt={`Photo from ${chapter.title}`}
-                      width={photo.width || undefined}
-                      height={photo.height || undefined}
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-            {chapter.heroPhoto && (
-              <div class="day-hero-photo">
-                <img src={`/photos/${chapter.heroPhoto.filename}`} alt={`Featured photo from ${chapter.title}`} loading="lazy" />
-              </div>
-            )}
-          </article>
+          <FeaturePost chapter={chapter} flip={i % 2 === 1} />
         ))}
       </section>
     )}
@@ -301,46 +262,7 @@ const japanLandD = (japanOutlineRings as number[][][])
       <section class="epilogue">
         <div class="prelude-eyebrow">Reflections</div>
         {epilogueChapters.map((chapter: any, i: number) => (
-          <article class={`prelude-post${i % 2 === 1 ? ' prelude-post--flip' : ''}`}>
-            <div class="prelude-post-body">
-              <div class="prelude-post-text">
-                <h3 class="prelude-post-title">{chapter.title}</h3>
-                {parsePostBlocks(chapter.fullText || chapter.desc).map((block) =>
-                  block.type === 'stats' ? (
-                    <>
-                      {block.label && <div class="chapter-facts-label">{block.label}</div>}
-                      <ul class="chapter-facts">
-                        {block.items.map((line: string) => (
-                          <li>{line}</li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p class="chapter-desc">{block.text}</p>
-                  )
-                )}
-                <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
-              </div>
-              {chapter.photos && chapter.photos.length > 0 && (
-                <div class={`prelude-post-media${chapter.photos.length > 8 ? ' prelude-post-media--dense' : ''}`}>
-                  {chapter.photos.map((photo: any) => (
-                    <img
-                      src={`/photos/${photo.filename}`}
-                      alt={`Photo from ${chapter.title}`}
-                      width={photo.width || undefined}
-                      height={photo.height || undefined}
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-            {chapter.heroPhoto && (
-              <div class="day-hero-photo">
-                <img src={`/photos/${chapter.heroPhoto.filename}`} alt={`Featured photo from ${chapter.title}`} loading="lazy" />
-              </div>
-            )}
-          </article>
+          <FeaturePost chapter={chapter} flip={i % 2 === 1} />
         ))}
       </section>
     )}

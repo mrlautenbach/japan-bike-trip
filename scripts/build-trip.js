@@ -1,12 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const {
   loadDayMeta,
   parseSegmentFromFile,
   computeSegmentStats,
   simplifyToMax,
 } = require('./lib/gpx');
-const { listPhotosWithDays } = require('./lib/photos');
+const { listPhotosWithDays, PHOTOS_DIR } = require('./lib/photos');
 const { listVideosWithDays } = require('./lib/videos');
 
 const ROOT = path.join(__dirname, '..');
@@ -15,6 +16,11 @@ const PHOTO_ASSIGNMENTS_PATH = path.join(ROOT, 'data', 'photo-assignments.json')
 const VIDEO_ASSIGNMENTS_PATH = path.join(ROOT, 'data', 'video-assignments.json');
 const CHAPTER_ASSIGNMENTS_PATH = path.join(ROOT, 'data', 'chapter-assignments.json');
 const BLOG_POSTS_PATH = path.join(ROOT, 'data', 'blog-posts.json');
+const PUBLIC_PHOTOS_DIR = path.join(ROOT, 'site', 'public', 'photos');
+const THUMBS_DIR = path.join(PUBLIC_PHOTOS_DIR, 'thumbs');
+// Grid cells are ~216px and the side strips 300px, so 720px covers 2x screens.
+const THUMB_MAX_PX = 720;
+const THUMB_QUALITY = 80;
 
 const POINTS_PER_SEGMENT = 400;
 
@@ -27,9 +33,52 @@ function readJsonSafe(p, fallback) {
 }
 
 function formatDuration(totalSeconds) {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.round((totalSeconds % 3600) / 60);
-  return `${h}h ${m}m`;
+  const totalMinutes = Math.round(totalSeconds / 60);
+  return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+}
+
+function isUpToDate(outPath, srcMtimeMs) {
+  return fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= srcMtimeMs;
+}
+
+// site/public/photos is the published copy of data/raw/photos: exactly the
+// photos in use, plus a small thumbnail of each for the grids (the lightbox
+// and full-width features still load the full file). Removing a published
+// copy is safe — the original stays in data/raw/photos for the assign tool.
+function publishPhotos(targets) {
+  if (!fs.existsSync(PHOTOS_DIR)) {
+    console.warn(`Skipping photo publish: ${PHOTOS_DIR} not found.`);
+    return;
+  }
+  const used = new Set();
+  for (const target of targets) {
+    for (const photo of target.photos) used.add(photo.filename);
+    if (target.heroPhoto) used.add(target.heroPhoto.filename);
+  }
+
+  fs.mkdirSync(THUMBS_DIR, { recursive: true });
+  let made = 0;
+  for (const filename of used) {
+    const src = path.join(PHOTOS_DIR, filename);
+    const srcMtime = fs.statSync(src).mtimeMs;
+    const full = path.join(PUBLIC_PHOTOS_DIR, filename);
+    const thumb = path.join(THUMBS_DIR, filename);
+    if (!isUpToDate(full, srcMtime)) fs.copyFileSync(src, full);
+    if (!isUpToDate(thumb, srcMtime)) {
+      execFileSync('sips', ['-Z', String(THUMB_MAX_PX), '-s', 'formatOptions', String(THUMB_QUALITY), src, '--out', thumb], { stdio: 'ignore' });
+      made++;
+    }
+  }
+
+  let removed = 0;
+  for (const dir of [PUBLIC_PHOTOS_DIR, THUMBS_DIR]) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isFile() || used.has(entry.name)) continue;
+      fs.rmSync(path.join(dir, entry.name));
+      removed++;
+    }
+  }
+  console.log(`Photos: ${used.size} published, ${made} thumbnail(s) generated, ${removed} unused file(s) removed`);
 }
 
 function buildDay(dayMeta) {
@@ -236,6 +285,8 @@ function main() {
   for (const target of [...days, ...chapters]) {
     target.videos.sort((a, b) => (a.capturedAt || '').localeCompare(b.capturedAt || ''));
   }
+
+  publishPhotos([...days, ...chapters]);
 
   // --- Trip-level totals ---
   const totalDistanceKm = days.reduce((s, d) => s + d.stats.distanceKm, 0);

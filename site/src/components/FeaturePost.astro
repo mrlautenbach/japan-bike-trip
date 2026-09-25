@@ -1,0 +1,38 @@
+---
+import PostBody from './PostBody.astro';
+
+interface Props {
+  chapter: any;
+  flip: boolean;
+}
+const { chapter, flip } = Astro.props;
+const photos = chapter.photos || [];
+---
+<article class={`prelude-post${flip ? ' prelude-post--flip' : ''}`}>
+  <div class="prelude-post-body">
+    <div class="prelude-post-text">
+      <h3 class="prelude-post-title">{chapter.title}</h3>
+      <PostBody text={chapter.fullText || chapter.desc} />
+      <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
+    </div>
+    {photos.length > 0 && (
+      <div class={`prelude-post-media${photos.length > 8 ? ' prelude-post-media--dense' : ''}`}>
+        {photos.map((photo: any) => (
+          <img
+            src={`/photos/thumbs/${photo.filename}`}
+            data-full={`/photos/${photo.filename}`}
+            alt={`Photo from ${chapter.title}`}
+            width={photo.width || undefined}
+            height={photo.height || undefined}
+            loading="lazy"
+          />
+        ))}
+      </div>
+    )}
+  </div>
+  {chapter.heroPhoto && (
+    <div class="day-hero-photo">
+      <img src={`/photos/${chapter.heroPhoto.filename}`} alt={`Featured photo from ${chapter.title}`} loading="lazy" />
+    </div>
+  )}
+</article>

@@ -16,6 +16,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const trip = JSON.parse(document.getElementById('trip-data').textContent);
 const isMobile = window.matchMedia('(max-width: 860px)').matches;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Scale a MapLibre line-width value by `factor`, whether it's a plain number
 // or a zoom-dependent expression. Expressions can't just be wrapped in
@@ -165,7 +166,7 @@ function fitBoundsWithMargin(bounds, { padding, pitch = 0, duration = 0, essenti
     center: cam.center,
     zoom: cam.zoom - Math.log2(1 + ZOOM_OUT_FACTOR),
     pitch,
-    duration,
+    duration: reduceMotion ? 0 : duration,
     essential,
   });
 }
@@ -277,15 +278,19 @@ function setupScrollBinding() {
         }
       }
     },
-    { rootMargin: '-45% 0px -45% 0px', threshold: 0 }
+    // On phones the map is a sticky strip across the top 38% of the screen, so
+    // "in view" means the middle of the area below it, not of the whole screen.
+    { rootMargin: isMobile ? '-65% 0px -30% 0px' : '-45% 0px -45% 0px', threshold: 0 }
   );
 
   daySections.forEach((section) => observer.observe(section));
   document.querySelectorAll('.map-beat[data-beat-days]').forEach((beat) => observer.observe(beat));
 
+  if (reduceMotion) return;
+
   // Gentle entrance animation for each day section's content.
   gsap.utils.toArray('.day-section').forEach((section) => {
-    gsap.from(section.querySelectorAll('.stat-bar, .chapter-block, .photo-strip, .day-title'), {
+    gsap.from(section.querySelectorAll('.stat-bar, .chapter-block, .photo-grid, .day-title'), {
       opacity: 0,
       y: 24,
       duration: 0.6,
@@ -325,7 +330,7 @@ function setupScrollBinding() {
 document.querySelectorAll('.day-nav a').forEach((a) => {
   a.addEventListener('click', (e) => {
     e.preventDefault();
-    document.getElementById(a.getAttribute('href').slice(1))?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(a.getAttribute('href').slice(1))?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
   });
 });
 
@@ -343,7 +348,7 @@ function closeLightbox() {
 document.addEventListener('click', (e) => {
   const photo = e.target.closest('.photo-grid img, .prelude-post-media img');
   if (photo) {
-    lightboxImg.src = photo.src;
+    lightboxImg.src = photo.dataset.full || photo.src;
     lightboxImg.alt = photo.alt;
     lightbox.classList.add('open');
     return;
@@ -388,7 +393,7 @@ if (dayVideos.length) {
 // Full-width feature photos: the image is oversized (see CSS) and slides
 // vertically as its section crosses the viewport, giving a parallax drift
 // instead of sitting static behind the clipped frame.
-gsap.utils.toArray('.day-hero-photo img').forEach((img) => {
+if (!reduceMotion) gsap.utils.toArray('.day-hero-photo img').forEach((img) => {
   gsap.fromTo(
     img,
     { y: 150 },

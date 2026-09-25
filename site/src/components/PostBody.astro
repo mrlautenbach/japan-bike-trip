@@ -1,0 +1,22 @@
+---
+import { parsePostBlocks } from '../lib/postText';
+
+interface Props {
+  text: string | null;
+}
+const blocks = parsePostBlocks(Astro.props.text);
+---
+{blocks.map((block) =>
+  block.type === 'stats' ? (
+    <>
+      {block.label && <div class="chapter-facts-label">{block.label}</div>}
+      <ul class="chapter-facts">
+        {block.items.map((line) => <li>{line}</li>)}
+      </ul>
+    </>
+  ) : block.type === 'heading' ? (
+    <h4 class="chapter-subhead">{block.text}</h4>
+  ) : (
+    <p class="chapter-desc">{block.text}</p>
+  )
+)}

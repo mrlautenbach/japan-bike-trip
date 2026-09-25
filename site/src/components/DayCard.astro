@@ -1,6 +1,6 @@
 ---
 import ElevationChart from './ElevationChart.astro';
-import { parsePostBlocks } from '../lib/postText';
+import PostBody from './PostBody.astro';
 
 interface Chapter {
   slug: string;
@@ -91,7 +91,12 @@ const startDot = day.startCoords ? project(day.startCoords) : null;
   {day.photos.length > 0 ? (
     <div class="photo-grid">
       {day.photos.map((photo: any) => (
-        <img src={`/photos/${photo.filename}`} alt={`Photo from ${day.label}`} loading="lazy" />
+        <img
+          src={`/photos/thumbs/${photo.filename}`}
+          data-full={`/photos/${photo.filename}`}
+          alt={`Photo from ${day.label}`}
+          loading="lazy"
+        />
       ))}
     </div>
   ) : (
@@ -101,20 +106,7 @@ const startDot = day.startCoords ? project(day.startCoords) : null;
   {chapters.map((chapter) => (
     <div class="chapter-block">
       <div class="chapter-title">{chapter.title}</div>
-      {parsePostBlocks(chapter.fullText || chapter.desc).map((block) =>
-        block.type === 'stats' ? (
-          <>
-            {block.label && <div class="chapter-facts-label">{block.label}</div>}
-            <ul class="chapter-facts">
-              {block.items.map((line: string) => (
-                <li>{line}</li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <p class="chapter-desc">{block.text}</p>
-        )
-      )}
+      <PostBody text={chapter.fullText || chapter.desc} />
       <a class="chapter-link" href={chapter.url} target="_blank" rel="noopener">View original post ↗</a>
     </div>
   ))}
